@@ -48,7 +48,8 @@
         .recommended-swipe,
         .floor-single-card,
         .bili-feed-card,
-        .bili-video-card
+        .bili-video-card,
+        .palette-button-wrap
         {
             display: none !important;
         }
@@ -101,9 +102,12 @@
         .rb-head h2{font:900 20px/1.35 "Noto Sans SC",sans-serif}
         .rb-head-meta{margin-top:6px;font:500 11px/1.5 monospace;color:#8ea2c0}
         .rb-head_buttons{display:flex;height:100%;flex-direction: row;align-items: center;gap: 8px;}
-        .rb-clean{flex: none;width: 36px;height: 36px;border-radius: 8px; border: 1px solid #25334d;background: #1a2537;color: #8ea2c0;font-size: 15px;cursor: pointer;transition: .25s;display: grid;place-items: center;}
-        .rb-close{flex:none;width:36px;height:36px;border-radius:8px;border:1px solid #25334d;background:#1a2537;color:#8ea2c0;font-size:15px;cursor:pointer;transition:.25s;display:grid;place-items:center}
-        .rb-close:hover{border-color:#fb7299;color:#fb7299;transform:rotate(90deg)}
+        .rb-clean{flex: none;width: 36px;height: 36px;border-radius: 8px; border: 1px solid #25334d;background: #1a2537;color: #8ea2c0;font-size: 15px;cursor: pointer;transition: .25s;display: grid;place-items: center;transition: transform .25s, border-color .25s, color .25s, background .25s;}
+        .rb-clean > span {display: inline-block;transition: transform .25s;}
+        .rb-close{flex:none;width:36px;height:36px;border-radius:8px;border:1px solid #25334d;background:#1a2537;color:#8ea2c0;font-size:15px;cursor:pointer;transition:.25s;display:grid;place-items:center;transition: transform .25s, border-color .25s, color .25s, background .25s;}
+        .rb-close:hover,.rb-clean:hover{border-color:#fb7299;color:#fb7299;}
+        .rb-clean:hover > span{transform: rotate(-20deg) translateY(1px);}
+        .rb-close:hover{transform:rotate(90deg)}
         .rb-layout{flex:1;display:flex;min-height:0}
         .rb-side{flex:0 0 252px;display:flex;flex-direction:column;min-height:0;background:#101826;border-right:1px solid #25334d}
         .rb-side-head{display:flex;align-items:center;gap:8px;flex:none;padding:14px 16px;border-bottom:1px solid #1d2940;font:600 10px/1 monospace;color:#6b7fa0;letter-spacing:.2em}
@@ -535,8 +539,12 @@
                         <p class="rb-head-meta" id="rbMeta"></p>
                     </div>
                     <div class="rb-head_buttons">
-                        <button class="rb-clean" id="rbClean" aria-label="清空">※</button>
-                        <button class="rb-close" id="rbClose" aria-label="关闭">✕</button>
+                        <button class="rb-clean" id="rbClean" aria-label="清空" title="清空">
+                            <span>🗑️</span>
+                        </button>
+                        <button class="rb-close" id="rbClose" aria-label="关闭" title="关闭">
+                            <span>❌</span>
+                        </button>
                     </div>
                 </header>
 
