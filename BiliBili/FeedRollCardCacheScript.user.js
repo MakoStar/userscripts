@@ -2,11 +2,11 @@
 // @name         [Bili]FeedRollCardCacheScript
 // @namespace    http://tampermonkey.net/
 // @author       MakoStar
-// @version      2.0.0
+// @version      2.0.1
 // @match        *://www.bilibili.com
 // @match        *://www.bilibili.com/?*
 // @match        *://www.bilibili.com/*
-// @description  一个用于缓存换一换按钮随机出现的视频卡片信息的脚本 (IndexedDB 版)
+// @description  一个用于缓存换一换按钮随机出现的视频卡片信息的脚本 (使用 IndexedDB 缓存)
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=www.bilibili.com
 // @run-at       document-start
 // @grant        none
@@ -284,12 +284,6 @@
     };
 
 
-    // =====================================================================
-    //  IndexedDB 存储层:
-    //  objectStore 主键 = timeKey（按批取/删、put 同 key 自动覆盖）
-    //  索引 byTs = 写入时记的真实时间戳（用于“最新在上”排序 + 找最旧批淘汰）
-    // =====================================================================
-
     const reqP = (req) => new Promise((resolve, reject) => {
         req.onsuccess = () => resolve(req.result);
         req.onerror = () => reject(req.error);
@@ -318,7 +312,6 @@
     });
 
 
-    // 游标遍历：onCursor 返回 false 表示提前停止
     const walkCursor = (source, range, dir, onCursor) => new Promise((resolve, reject) => {
         const req = source.openCursor(range ?? null, dir ?? "next");
         req.onsuccess = (e) => {
@@ -345,7 +338,7 @@
         const db = await openDB();
         const idx = db.transaction(STORE, "readonly").objectStore(STORE).index("byTs");
         const data = {}, ad = {}, keys = [];
-        await walkCursor(idx, null, "prev", (c) => {           // ← 反向：ts 大的先出 = 最新在上
+        await walkCursor(idx, null, "prev", (c) => {
             const { timeKey, videos, ads } = c.value;
             keys.push(timeKey);
             data[timeKey] = videos || [];
@@ -355,7 +348,7 @@
         return { snap: { data, ad, time: getDateFormatNumber() }, keys };
     };
 
-    // 滚动淘汰最旧批：保留最近 maxCount 批，多出来的按 ts 升序（最旧先出）删
+
     const evictOldest = async (maxCount) => {
         const db = await openDB();
         const tx = db.transaction(STORE, "readwrite");
@@ -364,7 +357,6 @@
         let toDelete = Math.max(0, total - maxCount);
         if (toDelete > 0) {
             await walkCursor(store.index("byTs"), null, "next", (c) => {
-                // 正向 = 最旧先出
                 if (toDelete <= 0) return false;
                 c.delete();
                 toDelete--;
@@ -374,7 +366,7 @@
         db.close();
     };
 
-    // 清空全部批
+
     const clearAllBatches = async () => {
         const db = await openDB();
         const tx = db.transaction(STORE, "readwrite");
@@ -383,7 +375,7 @@
         db.close();
     };
 
-    // 计数（init 打 log 用，轻量，不捞正文）
+
     const countBatches = async () => {
         const db = await openDB();
         const n = await reqP(db.transaction(STORE, "readonly").objectStore(STORE).count());
@@ -391,13 +383,13 @@
         return n;
     };
 
-    // 旧 timeKey → 毫秒（迁移时给排序用，解不出沉底为 0）
+
     const tsFromTimeKey = (k) => {
         const t = new Date(decodeTimeKey(k)).getTime();
         return Number.isFinite(t) ? t : 0;
     };
 
-    // 一次性迁移 localStorage → IndexedDB（幂等：IDB 非空或无旧数据则不迁/清旧 key）
+
     const migrateFromLocalStorage = async () => {
         let raw;
         try { raw = localStorage.getItem(LOCALSTORAGE_KEY); } catch (e) { return; }
@@ -415,7 +407,6 @@
             /* 读不出就当 0，下面 put 事务失败会回滚 */
         }
         if (existing > 0) {
-            // 旧 localStorage 视为废弃
             localStorage.removeItem(LOCALSTORAGE_KEY);
             return;
         }
@@ -427,7 +418,6 @@
             for (const k of allKeys) {
                 store.put({ timeKey: k, videos: dataMap[k] || [], ads: adMap[k] || [], ts: tsFromTimeKey(k) });
             }
-            // 全成才往下走，失败事务回滚、不删旧 key，下次重试
             await txComplete(tx);
             db.close();
             localStorage.removeItem(LOCALSTORAGE_KEY);
@@ -482,7 +472,6 @@
     };
 
 
-    // 写入端：增量 put 一批 + 受开关控制的滚动淘汰，不再全量 stringify / setItem
     const bindClickEvent = (btnSelector, savedEvent = {}) => {
         const rollBtn = document.querySelector(btnSelector);
         if (!rollBtn) return;
@@ -603,7 +592,6 @@
     };
 
 
-    // 渲染端读取：async，内部走 byTs 反向游标，返回的 keys 已“最新在上”
     const loadCache = async () => {
         try {
             return await loadSnapshotFromIDB();
@@ -618,7 +606,6 @@
     };
 
 
-    // 清空：clear 整个 store，无需再写空结构
     const cleanCache = async () => {
         logger("触发手动清空 IndexedDB 缓存!");
         try {
@@ -805,7 +792,6 @@
         });
 
         // $("rbOpen").addEventListener("click", openPanel);
-        // 使用「换一换」按钮下添加的回滚按钮触发打开面板
         document.getElementById("roll-back-btn").addEventListener("click", openPanel);
         $("rbClose").addEventListener("click", closePanel);
 
@@ -851,7 +837,6 @@
     const init = () => {
         logger("正在初始化中...");
         injectStyle();
-        // 先 ensureReady(建表+迁移) 旧数据好像不要也没关系
         findRollButton(ROLL_BTN_SELECTOR, async (isFound, savedEvent) => {
             try { await ensureReady(); } catch (e) { logger("ensureReady 失败", [e?.name, e?.message], "warn"); }
             if (!isFound) return;
