@@ -1,2 +1,1 @@
-# TM-Scripts
-tampermonkey script
+# Some-Scripts
