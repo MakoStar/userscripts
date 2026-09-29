@@ -585,6 +585,7 @@
         const rollBackBtn = document.createElement("button");
         rollBackBtn.classList.add("primary-btn", "roll-btn", "roll-back-btn");
         rollBackBtn.style.marginTop = "2px";
+        rollBackBtn.style.marginLeft = "0";
         rollBackBtn.id = "roll-back-btn";
         rollBackBtn.textContent = text;
 
